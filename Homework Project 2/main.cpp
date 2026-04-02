@@ -1,0 +1,38 @@
+#include <exception>
+#include <iostream>
+#include <string>
+
+#include "io.h"
+#include "polygon.h"
+#include "simplifier.h"
+
+int main(int argc, char* argv[]) {
+    try {
+        if (argc != 3) {
+            std::cerr << "Usage: ./simplify <input_file.csv> <target_vertices>\n";
+            return 1;
+        }
+
+        const std::string input_file = argv[1];
+        const int target_vertices = std::stoi(argv[2]);
+        if (target_vertices < 3) {
+            std::cerr << "target_vertices must be at least 3\n";
+            return 1;
+        }
+
+        const Polygon polygon = read_polygon_from_csv(input_file);
+        const SimplificationResult result = simplify_polygon(polygon, target_vertices);
+
+        const double input_area = total_signed_area(polygon);
+        const double output_area = total_signed_area(result.polygon);
+
+        write_polygon_to_stdout(result.polygon,
+                                input_area,
+                                output_area,
+                                result.total_areal_displacement);
+        return 0;
+    } catch (const std::exception& ex) {
+        std::cerr << ex.what() << '\n';
+        return 1;
+    }
+}
