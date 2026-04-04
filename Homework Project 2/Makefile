@@ -12,7 +12,7 @@ LAKE_OBJ = $(LAKE_SRC:.cpp=.o)
 
 .PHONY: all clean test lake
 
-all: $(TARGET)
+all: simplify makelake
 
 # --- main program ---
 $(TARGET): $(OBJS)
