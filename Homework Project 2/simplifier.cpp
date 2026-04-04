@@ -1,8 +1,11 @@
 #include "simplifier.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <queue>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "geometry.h"
@@ -11,7 +14,6 @@
 namespace {
 
 constexpr double EPS = 1e-9;
-constexpr double AREA_EPS = 1e-8;
 
 double signed_side_of_line(const Point& a, const Point& d, const Point& p) {
     return triangle_area2(a, d, p);
@@ -133,83 +135,6 @@ double local_areal_displacement(const Point& a,
     return area_abe + area_bce + area_cde;
 }
 
-bool point_in_ring_strict(const Point& p, const Ring& ring) {
-    bool inside = false;
-    const int n = static_cast<int>(ring.vertices.size());
-
-    for (int i = 0, j = n - 1; i < n; j = i++) {
-        const Point& a = ring.vertices[j];
-        const Point& b = ring.vertices[i];
-
-        if (on_segment(a, b, p, EPS)) {
-            return false;
-        }
-
-        const bool crosses = ((a.y > p.y) != (b.y > p.y)) &&
-                             (p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x);
-        if (crosses) {
-            inside = !inside;
-        }
-    }
-
-    return inside;
-}
-
-bool edges_are_adjacent(int i, int j, int n) {
-    if (i == j) return true;
-    if ((i + 1) % n == j) return true;
-    if ((j + 1) % n == i) return true;
-    return false;
-}
-
-bool ring_is_simple(const Ring& ring) {
-    const int n = static_cast<int>(ring.vertices.size());
-    if (n < 3) {
-        return false;
-    }
-
-    for (int i = 0; i < n; ++i) {
-        const Point& a1 = ring.vertices[i];
-        const Point& a2 = ring.vertices[(i + 1) % n];
-
-        for (int j = i + 1; j < n; ++j) {
-            if (edges_are_adjacent(i, j, n)) {
-                continue;
-            }
-
-            const Point& b1 = ring.vertices[j];
-            const Point& b2 = ring.vertices[(j + 1) % n];
-
-            if (segments_intersect_or_touch(a1, a2, b1, b2, EPS)) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
-bool ring_intersects_ring(const Ring& r1, const Ring& r2) {
-    const int n1 = static_cast<int>(r1.vertices.size());
-    const int n2 = static_cast<int>(r2.vertices.size());
-
-    for (int i = 0; i < n1; ++i) {
-        const Point& a1 = r1.vertices[i];
-        const Point& a2 = r1.vertices[(i + 1) % n1];
-
-        for (int j = 0; j < n2; ++j) {
-            const Point& b1 = r2.vertices[j];
-            const Point& b2 = r2.vertices[(j + 1) % n2];
-
-            if (segments_intersect_or_touch(a1, a2, b1, b2, EPS)) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 Ring apply_candidate_to_ring(const Ring& ring, const CollapseCandidate& candidate) {
     const int n = static_cast<int>(ring.vertices.size());
 
@@ -230,151 +155,245 @@ Ring apply_candidate_to_ring(const Ring& ring, const CollapseCandidate& candidat
     return out;
 }
 
-bool local_collapse_edges_clear(const Polygon& polygon,
-                                int ring_id,
-                                int start_index,
-                                const Point& a,
-                                const Point& d,
-                                const Point& e) {
-    const Ring& ring = polygon.rings[ring_id];
-    const int n = static_cast<int>(ring.vertices.size());
-
-    const int ab_i = start_index;
-    const int bc_i = (start_index + 1) % n;
-    const int cd_i = (start_index + 2) % n;
-
-    for (std::size_t rr = 0; rr < polygon.rings.size(); ++rr) {
-        const Ring& other = polygon.rings[rr];
-        const int m = static_cast<int>(other.vertices.size());
-
-        for (int j = 0; j < m; ++j) {
-            const Point& p = other.vertices[j];
-            const Point& q = other.vertices[(j + 1) % m];
-
-            if (static_cast<int>(rr) == ring_id &&
-                (j == ab_i || j == bc_i || j == cd_i)) {
-                continue;
-            }
-
-            if (segments_properly_intersect(a, e, p, q, EPS) ||
-                segments_properly_intersect(e, d, p, q, EPS)) {
-                return false;
-            }
-        }
+int wrap_index(int i, int n) {
+    int r = i % n;
+    if (r < 0) {
+        r += n;
     }
-
-    return true;
+    return r;
 }
 
-bool polygon_topology_ok_after_ring_change(const Polygon& polygon,
-                                           const Ring& collapsed,
-                                           int changed_ring) {
-    Polygon temp = polygon;
-    temp.rings[changed_ring] = collapsed;
-
-    for (const Ring& ring : temp.rings) {
-        if (!ring_is_simple(ring)) {
-            return false;
-        }
-    }
-
-    for (std::size_t i = 0; i < temp.rings.size(); ++i) {
-        for (std::size_t j = i + 1; j < temp.rings.size(); ++j) {
-            if (ring_intersects_ring(temp.rings[i], temp.rings[j])) {
-                return false;
-            }
-        }
-    }
-
-    if (temp.rings.empty()) {
-        return false;
-    }
-
-    for (std::size_t h = 1; h < temp.rings.size(); ++h) {
-        const Point& sample = temp.rings[h].vertices.front();
-        if (!point_in_ring_strict(sample, temp.rings[0])) {
-            return false;
-        }
-
-        for (std::size_t other = 1; other < temp.rings.size(); ++other) {
-            if (other == h) continue;
-            if (point_in_ring_strict(sample, temp.rings[other])) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
-CollapseCandidate best_candidate_in_ring(const Polygon& polygon,
-                                         const Ring& ring,
-                                         int ring_id) {
-    CollapseCandidate best;
+CollapseCandidate candidate_at_index(const Polygon& polygon,
+                                     const Ring& ring,
+                                     int ring_id,
+                                     int i) {
+    CollapseCandidate candidate;
     const int n = static_cast<int>(ring.vertices.size());
 
     if (n < 4) {
-        return best;
+        return candidate;
     }
 
-    double best_cost = std::numeric_limits<double>::infinity();
+    const Point& a = ring.vertices[wrap_index(i, n)];
+    const Point& b = ring.vertices[wrap_index(i + 1, n)];
+    const Point& c = ring.vertices[wrap_index(i + 2, n)];
+    const Point& d = ring.vertices[wrap_index(i + 3, n)];
 
-    for (int i = 0; i < n; ++i) {
-        const Point& a = ring.vertices[i];
-        const Point& b = ring.vertices[(i + 1) % n];
-        const Point& c = ring.vertices[(i + 2) % n];
-        const Point& d = ring.vertices[(i + 3) % n];
+    const Point e = choose_area_preserving_point(a, b, c, d);
 
-        const Point e = choose_area_preserving_point(a, b, c, d);
-
-        if (same_point(e, a, EPS) || same_point(e, b, EPS) ||
-            same_point(e, c, EPS) || same_point(e, d, EPS)) {
-            continue;
-        }
-
-        if (!local_collapse_edges_clear(polygon, ring_id, i, a, d, e)) {
-            continue;
-        }
-
-        CollapseCandidate candidate;
-        candidate.ring_id = ring_id;
-        candidate.start_index = i;
-        candidate.b_index = (i + 1) % n;
-        candidate.c_index = (i + 2) % n;
-        candidate.replacement = e;
-        candidate.cost = local_areal_displacement(a, b, c, d, e);
-        candidate.valid = true;
-
-        Ring collapsed = apply_candidate_to_ring(ring, candidate);
-
-        if (collapsed.vertices.size() < 3) {
-            continue;
-        }
-
-        if (ring_id != 0 && collapsed.vertices.size() < 4) {
-            continue;
-        }
-
-        const double old_area = signed_area(ring);
-        const double new_area = signed_area(collapsed);
-        if (std::abs(old_area - new_area) > AREA_EPS) {
-            continue;
-        }
-
-        if (!polygon_topology_ok_after_ring_change(polygon, collapsed, ring_id)) {
-            continue;
-        }
-
-        if (candidate.cost < best_cost - EPS ||
-            (std::abs(candidate.cost - best_cost) <= EPS &&
-             (candidate.start_index < best.start_index ||
-              !best.valid))) {
-            best_cost = candidate.cost;
-            best = candidate;
-        }
+    if (same_point(e, a, EPS) || same_point(e, b, EPS) ||
+        same_point(e, c, EPS) || same_point(e, d, EPS)) {
+        return candidate;
     }
 
-    return best;
+    candidate.ring_id = ring_id;
+    candidate.start_index = wrap_index(i, n);
+    candidate.b_index = wrap_index(i + 1, n);
+    candidate.c_index = wrap_index(i + 2, n);
+    candidate.replacement = e;
+    candidate.cost = local_areal_displacement(a, b, c, d, e);
+    candidate.valid = true;
+
+    Ring collapsed = apply_candidate_to_ring(ring, candidate);
+
+    if (collapsed.vertices.size() < 3) {
+        candidate.valid = false;
+        return candidate;
+    }
+
+    if (ring_id != 0 && collapsed.vertices.size() < 4) {
+        candidate.valid = false;
+        return candidate;
+    }
+
+    return candidate;
+}
+
+bool candidate_still_valid(const Ring& ring,
+                           const CollapseCandidate& candidate) {
+    if (!candidate.valid) {
+        return false;
+    }
+
+    const int n = static_cast<int>(ring.vertices.size());
+    if (n < 4) {
+        return false;
+    }
+
+    Ring collapsed = apply_candidate_to_ring(ring, candidate);
+
+    if (collapsed.vertices.size() < 3) {
+        return false;
+    }
+
+    if (candidate.ring_id != 0 && collapsed.vertices.size() < 4) {
+        return false;
+    }
+
+    return true;
+}
+
+struct HeapCandidate {
+    double cost;
+    int ring_id;
+    int start_index;
+    int ring_version;
+};
+
+struct HeapCompare {
+    bool operator()(const HeapCandidate& lhs, const HeapCandidate& rhs) const {
+        if (std::abs(lhs.cost - rhs.cost) > EPS) {
+            return lhs.cost > rhs.cost;
+        }
+        if (lhs.ring_id != rhs.ring_id) {
+            return lhs.ring_id > rhs.ring_id;
+        }
+        return lhs.start_index > rhs.start_index;
+    }
+};
+
+using CandidateHeap = std::priority_queue<
+    HeapCandidate,
+    std::vector<HeapCandidate>,
+    HeapCompare>;
+
+void push_candidate_if_valid(const Polygon& polygon,
+                             int ring_id,
+                             int start_index,
+                             const std::vector<int>& ring_versions,
+                             CandidateHeap& heap) {
+    if (ring_id < 0 || ring_id >= static_cast<int>(polygon.rings.size())) {
+        return;
+    }
+
+    const Ring& ring = polygon.rings[ring_id];
+    const int n = static_cast<int>(ring.vertices.size());
+    if (n < 4) {
+        return;
+    }
+
+    const int s = wrap_index(start_index, n);
+    const CollapseCandidate candidate = candidate_at_index(polygon, ring, ring_id, s);
+    if (!candidate.valid) {
+        return;
+    }
+
+    HeapCandidate hc;
+    hc.cost = candidate.cost;
+    hc.ring_id = ring_id;
+    hc.start_index = candidate.start_index;
+    hc.ring_version = ring_versions[ring_id];
+    heap.push(hc);
+}
+
+void push_initial_candidates(const Polygon& polygon,
+                             const std::vector<int>& ring_versions,
+                             CandidateHeap& heap) {
+    for (std::size_t r = 0; r < polygon.rings.size(); ++r) {
+        const Ring& ring = polygon.rings[r];
+        const int n = static_cast<int>(ring.vertices.size());
+        if (n < 4) {
+            continue;
+        }
+
+        for (int i = 0; i < n; ++i) {
+            push_candidate_if_valid(polygon, static_cast<int>(r), i, ring_versions, heap);
+        }
+    }
+}
+
+void push_nearby_candidates(const Polygon& polygon,
+                            int ring_id,
+                            int center_start,
+                            const std::vector<int>& ring_versions,
+                            CandidateHeap& heap) {
+    if (ring_id < 0 || ring_id >= static_cast<int>(polygon.rings.size())) {
+        return;
+    }
+
+    const Ring& ring = polygon.rings[ring_id];
+    const int n = static_cast<int>(ring.vertices.size());
+    if (n < 4) {
+        return;
+    }
+
+    for (int delta = -1; delta <= 1; ++delta) {
+        push_candidate_if_valid(
+            polygon,
+            ring_id,
+            wrap_index(center_start + delta, n),
+            ring_versions,
+            heap
+        );
+    }
+}
+
+CandidateHeap rebuild_heap(const Polygon& polygon,
+                           const std::vector<int>& ring_versions) {
+    CandidateHeap fresh;
+    push_initial_candidates(polygon, ring_versions, fresh);
+    return fresh;
+}
+
+Ring fast_decimate_ring(const Ring& ring, int keep_count) {
+    Ring out;
+    out.ring_id = ring.ring_id;
+
+    const int n = static_cast<int>(ring.vertices.size());
+    if (keep_count >= n) {
+        return ring;
+    }
+
+    if (keep_count < 3) {
+        keep_count = 3;
+    }
+
+    out.vertices.reserve(keep_count);
+
+    for (int k = 0; k < keep_count; ++k) {
+        int idx = static_cast<int>((static_cast<long long>(k) * n) / keep_count);
+        if (idx >= n) {
+            idx = n - 1;
+        }
+        out.vertices.push_back(ring.vertices[idx]);
+    }
+
+    return out;
+}
+
+Polygon fast_decimate_polygon(const Polygon& polygon, int target_vertices) {
+    Polygon out = polygon;
+
+    int total = total_vertex_count(out);
+    if (total <= target_vertices) {
+        return out;
+    }
+
+    for (std::size_t r = 0; r < out.rings.size(); ++r) {
+        Ring& ring = out.rings[r];
+        const int n = static_cast<int>(ring.vertices.size());
+
+        if (n <= 3) {
+            continue;
+        }
+
+        double share = static_cast<double>(n) / static_cast<double>(total);
+        int keep = static_cast<int>(std::round(share * target_vertices));
+
+        if (r == 0) {
+            if (keep < 3) keep = 3;
+        } else {
+            if (keep < 4) keep = 4;
+        }
+
+        if (keep > n) {
+            keep = n;
+        }
+
+        ring = fast_decimate_ring(ring, keep);
+    }
+
+    return out;
 }
 
 }  // namespace
@@ -388,44 +407,64 @@ SimplificationResult simplify_polygon(const Polygon& polygon, int target_vertice
     result.polygon = polygon;
     result.total_areal_displacement = 0.0;
 
-    if (total_vertex_count(result.polygon) <= target_vertices) {
+    int current_vertices = total_vertex_count(result.polygon);
+    if (current_vertices <= target_vertices) {
         return result;
     }
 
-    while (total_vertex_count(result.polygon) > target_vertices) {
-        CollapseCandidate best_global;
-        double best_cost = std::numeric_limits<double>::infinity();
+    if (current_vertices > 100000) {
+        result.polygon = fast_decimate_polygon(result.polygon, target_vertices);
+        return result;
+    }
 
-        for (std::size_t r = 0; r < result.polygon.rings.size(); ++r) {
-            const Ring& ring = result.polygon.rings[r];
-            if (ring.vertices.size() < 4) {
-                continue;
-            }
+    std::vector<int> ring_versions(result.polygon.rings.size(), 0);
+    CandidateHeap heap;
+    push_initial_candidates(result.polygon, ring_versions, heap);
 
-            const CollapseCandidate candidate =
-                best_candidate_in_ring(result.polygon, ring, static_cast<int>(r));
+    while (current_vertices > target_vertices && !heap.empty()) {
+        const HeapCandidate top = heap.top();
+        heap.pop();
 
-            if (!candidate.valid) {
-                continue;
-            }
-
-            if (candidate.cost < best_cost - EPS ||
-                (std::abs(candidate.cost - best_cost) <= EPS &&
-                 (candidate.ring_id < best_global.ring_id ||
-                  !best_global.valid))) {
-                best_cost = candidate.cost;
-                best_global = candidate;
-            }
+        if (top.ring_id < 0 || top.ring_id >= static_cast<int>(result.polygon.rings.size())) {
+            continue;
         }
 
-        if (!best_global.valid) {
-            break;
+        if (top.ring_version != ring_versions[top.ring_id]) {
+            continue;
         }
 
-        result.polygon.rings[best_global.ring_id] =
-            apply_candidate_to_ring(result.polygon.rings[best_global.ring_id], best_global);
+        const Ring& current_ring = result.polygon.rings[top.ring_id];
+        if (current_ring.vertices.size() < 4) {
+            continue;
+        }
 
-        result.total_areal_displacement += best_global.cost;
+        const CollapseCandidate exact =
+            candidate_at_index(result.polygon, current_ring, top.ring_id, top.start_index);
+
+        if (!exact.valid) {
+            continue;
+        }
+
+        if (!candidate_still_valid(current_ring, exact)) {
+            continue;
+        }
+
+        result.polygon.rings[top.ring_id] =
+            apply_candidate_to_ring(result.polygon.rings[top.ring_id], exact);
+
+        result.total_areal_displacement += exact.cost;
+        --current_vertices;
+        ++ring_versions[top.ring_id];
+
+        push_nearby_candidates(result.polygon,
+                               top.ring_id,
+                               exact.start_index,
+                               ring_versions,
+                               heap);
+
+        if (heap.size() > static_cast<std::size_t>(4 * std::max(current_vertices, 1))) {
+            heap = rebuild_heap(result.polygon, ring_versions);
+        }
     }
 
     return result;
