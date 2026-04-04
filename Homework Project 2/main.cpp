@@ -35,15 +35,11 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        const SimplificationResult result = simplify_polygon(polygon, target_vertices);
-
+        const SimplificationResult result = simplify_polygon_hybrid(polygon, target_vertices);
         const double input_area = total_signed_area(polygon);
         const double output_area = total_signed_area(result.polygon);
 
-        write_polygon_to_stdout(result.polygon,
-                                input_area,
-                                output_area,
-                                result.total_areal_displacement);
+        write_polygon_to_stdout(result.polygon, input_area, output_area, result.total_areal_displacement);
 
         if (argc > 3)
         {
