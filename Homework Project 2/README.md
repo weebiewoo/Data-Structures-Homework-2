@@ -25,9 +25,13 @@ This application simplifies polygon geometry by reducing the number of vertices 
 
 3. **Run the program using:**
 
+  Individual files:
    ```bash
    ./simplify <input_file> <target_vertices> <output_file>
    ```
+
+   Run all:
+   make test
 
 ---
 
