@@ -168,3 +168,46 @@ void write_polygon_to_stdout(const Polygon& polygon,
     std::cout.flags(old_flags);
     std::cout.precision(old_precision);
 }
+
+void write_polygon_to_file(const Polygon& polygon,
+                           double input_area,
+                           double output_area,
+                           double areal_displacement,
+                           const std::string& filename)
+{
+    std::ofstream out(filename);
+    if (!out.is_open())
+    {
+        throw std::runtime_error("Failed to open output file");
+    }
+
+    out << "ring_id,vertex_id,x,y\n";
+
+    std::streamsize old_precision = out.precision();
+    std::ios::fmtflags old_flags = out.flags();
+
+    out << std::setprecision(15);
+
+    for (std::size_t r = 0; r < polygon.rings.size(); ++r)
+    {
+        const Ring& ring = polygon.rings[r];
+        for (std::size_t i = 0; i < ring.vertices.size(); ++i)
+        {
+            out << r << ',' << i << ','
+                << ring.vertices[i].x << ','
+                << ring.vertices[i].y << '\n';
+        }
+    }
+
+    out.setf(std::ios::scientific);
+    out.precision(6);
+
+    out << "Total signed area in input: " << input_area << '\n';
+    out << "Total signed area in output: " << output_area << '\n';
+    out << "Total areal displacement: " << areal_displacement << '\n';
+
+    out.flags(old_flags);
+    out.precision(old_precision);
+
+    out.close();
+}

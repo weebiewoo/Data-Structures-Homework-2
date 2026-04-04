@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
     try
     {
-        if (argc != 3)
+        if (argc < 3)
         {
             std::cerr << "Usage: ./simplify <input_file.csv> <target_vertices>\n";
             return 1;
