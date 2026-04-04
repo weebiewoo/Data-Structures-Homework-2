@@ -111,9 +111,9 @@ Ring simplify_ring_to_target(const Ring& ring, int target_size) {
         }
         
         // Check if removing would cause self-intersection or invalid ring
-        const Point& a = ring.vertices[prev[vi.index]];
-        const Point& b = ring.vertices[vi.index];
-        const Point& c = ring.vertices[next[vi.index]];
+        //const Point& a = ring.vertices[prev[vi.index]];
+        //const Point& b = ring.vertices[vi.index];
+        //const Point& c = ring.vertices[next[vi.index]];
         
         // Don't remove if it would make the ring invalid
         if (ring.ring_id != 0 && (removed + 1 >= vertices_to_remove)) {
