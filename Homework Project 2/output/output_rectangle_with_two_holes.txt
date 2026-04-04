@@ -1,3 +1,9 @@
+Using APSC for moderate reduction
+APSC: Starting from 12 to 7
+Collapsed to 11 vertices (cost: 2)
+Collapsed to 10 vertices (cost: 400)
+No valid collapses found, stopping early
+APSC final vertex count: 10
 ring_id,vertex_id,x,y
 0,0,15,-30
 0,1,15,10

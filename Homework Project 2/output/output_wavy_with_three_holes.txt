@@ -1,3 +1,28 @@
+Using APSC for moderate reduction
+APSC: Starting from 43 to 21
+Collapsed to 42 vertices (cost: 1137.93)
+Collapsed to 41 vertices (cost: 1250)
+Collapsed to 40 vertices (cost: 2500)
+Collapsed to 39 vertices (cost: 3125)
+Collapsed to 38 vertices (cost: 3409.09)
+Collapsed to 37 vertices (cost: 3428.57)
+Collapsed to 36 vertices (cost: 3750)
+Collapsed to 35 vertices (cost: 3750)
+Collapsed to 34 vertices (cost: 4166.67)
+Collapsed to 33 vertices (cost: 4729.73)
+Collapsed to 32 vertices (cost: 5862.65)
+Collapsed to 31 vertices (cost: 6057.69)
+Collapsed to 30 vertices (cost: 6818.18)
+Collapsed to 29 vertices (cost: 7962.91)
+Collapsed to 28 vertices (cost: 8571.43)
+Collapsed to 27 vertices (cost: 10929.8)
+Collapsed to 26 vertices (cost: 12538.3)
+Collapsed to 25 vertices (cost: 14749.4)
+Collapsed to 24 vertices (cost: 16250)
+Collapsed to 23 vertices (cost: 2250)
+Collapsed to 22 vertices (cost: 16896.3)
+Collapsed to 21 vertices (cost: 17767.2)
+APSC final vertex count: 21
 ring_id,vertex_id,x,y
 0,0,800,0
 0,1,1049.76816074189,-99.9072642967542

@@ -7,14 +7,14 @@
 int main()
 {
     //tweakables
-    const int N = 1850;
-    const double base_radius = 1000.0;
+    const int N = 2550;
+    const double base_radius = 800.0;
     std::mt19937 rng(42);
     //more jagged   -> noise(-200, 200)
     //smoother      -> noise(-30, 30)
     std::uniform_real_distribution<double> noise(-200.0, 200.0);
     
-    std::ofstream out("test_cases/input_testlake.csv");
+    std::ofstream out("test_cases/input_winkwonklake.csv");
     out << "ring_id,vertex_id,x,y\n";
 
     for (int i = 0; i < N; ++i)

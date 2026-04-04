@@ -1,3 +1,15 @@
+Using APSC for moderate reduction
+APSC: Starting from 22 to 13
+Collapsed to 21 vertices (cost: 37.5)
+Collapsed to 20 vertices (cost: 37.5)
+Collapsed to 19 vertices (cost: 85.7143)
+Collapsed to 18 vertices (cost: 60)
+Collapsed to 17 vertices (cost: 85.7143)
+Collapsed to 16 vertices (cost: 60)
+Collapsed to 15 vertices (cost: 85.7143)
+Collapsed to 14 vertices (cost: 60)
+Collapsed to 13 vertices (cost: 81.8644)
+APSC final vertex count: 13
 ring_id,vertex_id,x,y
 0,0,0,0
 0,1,41,2
