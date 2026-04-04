@@ -20,3 +20,42 @@ test: $(TARGET)
 
 clean:
 	rm -f $(OBJS) $(TARGET)
+
+
+# =========================
+# DEMO CONFIG
+# =========================
+
+TEST_DIR1 = demo
+TEST_DIR2 = demo2
+TEST_DIR3 = demo3
+TARGET_VERTICES ?= 3
+
+# Find all csv test files
+TEST_FILES := $(wildcard $(TEST_DIR)/*.csv)
+
+# =========================
+# RUN ALL TESTS
+# =========================
+
+demo: $(TARGET)
+	@cd $(TEST_DIR) && for file in *.csv; do \
+		echo "-----------------------------------"; \
+		echo "Test: $$file"; \
+		../$(TARGET) $$file $(TARGET_VERTICES); \
+		echo ""; \
+	done
+demo2: $(TARGET)
+	@cd $(TEST_DIR) && for file in *.csv; do \
+		echo "-----------------------------------"; \
+		echo "Test: $$file"; \
+		../$(TARGET) $$file $(TARGET_VERTICES); \
+		echo ""; \
+	done
+demo3: $(TARGET)
+	@cd $(TEST_DIR) && for file in *.csv; do \
+		echo "-----------------------------------"; \
+		echo "Test: $$file"; \
+		../$(TARGET) $$file $(TARGET_VERTICES); \
+		echo ""; \
+	done
